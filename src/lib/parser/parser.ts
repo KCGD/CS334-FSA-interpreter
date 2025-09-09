@@ -9,6 +9,10 @@ export type Program = {
     vars: {[ley:string]: any};
 }
 
+const REG = {
+    between_brackets: /(?<=\[)(.*?)(?=\])/
+}
+
 export type ParserState = "General" | "State";
 
 /**
@@ -23,6 +27,7 @@ export async function parse(file:string): Program {
     let proto:Program = {} as Program;
     let state:ParserState = "General";
     let state_name:string = "";
+    let line_num = 0;
     
     // make sure file exists
     if(!existsSync(file)) {
@@ -74,6 +79,14 @@ export async function parse(file:string): Program {
                     // is array or literal?
                     if(var_value.startsWith('[')) {
                         // array
+                        let select = REG.between_brackets.exec(var_value)[0];
+                        if(!select) {
+                            // parser error, bad array value
+                            throw new Error(parse_error(line, line_num, `Invalid array syntax.`));
+                        }
+
+                        // assign array value
+                        let array_val = select.split(',')
                     } else {
                         // literal
                         
@@ -81,5 +94,11 @@ export async function parse(file:string): Program {
                 }
             } break;
         }
+
+        line_num++;
     }
+}
+
+function parse_error(line:string, line_n:number, reason:string): string {
+    return `Parser error occured on line ${line_n}: ${reason}\n\n${line_n}|\t${line}\n\n`;
 }
