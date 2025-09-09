@@ -1,0 +1,9 @@
+{
+  "main": ".tsOut/bundle.js",
+  "output": "Build/executable.blob",
+  "disableExperimentalSEAWarning": true,
+  "useSnapshot": false,
+  "useCodeCache": true,
+  "assets": {
+  }
+}

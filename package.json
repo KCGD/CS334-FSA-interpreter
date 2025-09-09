@@ -1,0 +1,43 @@
+{
+  "name": "default",
+  "version": "0.0.0-0",
+  "description": "package description",
+  "packageOpts": {
+    "section": "base",
+    "priority": "optional",
+    "depends": "coreutils (>= 8.32-4.1)",
+    "builddepends": "curl, tar, gcc, jq",
+    "maintainer": "maintainer"
+  },
+  "scripts": {
+    "build": "node scripts/build",
+    "clean": "rm -r .tsOut; rm Build/executable.blob || true; git checkout sea-config.json || true",
+    "pkg-arch": "node scripts/packaging/mkcontrol arch_any && ./scripts/package_arch.sh $(cat package.json | jq -r .name)",
+    "pkg-debian": "yarn pkg-debian:$(uname -m)",
+    "pkg-debian:aarch64": "node scripts/packaging/mkcontrol debian_aarch64 && ./scripts/package_debian.sh $(cat package.json | jq -r .name)",
+    "pkg-debian:x86_64": "node scripts/packaging/mkcontrol debian_x86_64  && ./scripts/package_debian.sh $(cat package.json | jq -r .name)",
+    "pkg-all": "yarn pkg-arch && yarn pkg-debian",
+    "dev": "yarn start",
+    "start": "yarn build auto --dev && yarn run ts-node-dev --rs --pretty src/main.ts",
+    "start:run": "node src/.tsOut/main"
+  },
+  "author": "",
+  "license": "GPL-2.0-only",
+  "devDependencies": {
+    "@types/cli-color": "^2.0.2",
+    "@types/dotenv": "^8.2.3",
+    "@types/node": "^20.12.7",
+    "backpack-cli": "git+https://github.com/KCGD/backpack-cli.git",
+    "cli-color": "^2.0.3",
+    "esbuild": "^0.25.8",
+    "nodemon": "^3.1.4",
+    "postject": "^1.0.0-alpha.6",
+    "source-map-support": "^0.5.21",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "constants": "^0.0.2",
+    "dotenv": "^17.2.1"
+  }
+}

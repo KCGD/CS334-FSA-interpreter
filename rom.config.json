@@ -1,0 +1,9 @@
+{
+    "seaConfigPath": "sea-config.json",
+    "files": [
+        "src/assets/**/*",
+        ".native/**/*",
+        "LICENSE"
+    ],
+    "output": ".tsOut/rom.js"
+}
