@@ -1,5 +1,5 @@
 lang = [1,0]
-accept = [q0]
+accept = [q1]
 start = q0
 
 q0:
