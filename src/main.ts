@@ -151,17 +151,17 @@ async function Main(): Promise<void> {
     // run interpreter
     const answer = await interpret(program, ProcessArgs.string);
 
+    // print history
+    process.stdout.write(`--> [START]`);
+    for(const event of answer.path) {
+        process.stdout.write(`\n--> [${event.state} + ${event.token} -> ${event.destination}]`);
+    }
+    process.stderr.write("\n--> [END]\n");
+
     // program analysis
     if(program.accept.includes(answer.ending_state)) {
         Log(`I`, `String was accepted (halted in state: ${answer.ending_state} of accepted states [${program.accept.join(", ")}])`);
     } else {
         Log(`I`, `String was NOT accepted (halted in state: ${answer.ending_state} NOT in accepted states [${program.accept.join(", ")}])`);
     }
-
-    // print history
-    process.stdout.write(`[START]`);
-    for(const event of answer.path) {
-        process.stdout.write(` --> [${event.state} + ${event.token} -> ${event.destination}]`);
-    }
-    process.stderr.write("--> [END]\n");
 }
