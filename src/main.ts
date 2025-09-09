@@ -4,6 +4,7 @@ import * as path from "path";
 import { isSea } from 'node:sea';
 import { Log } from './lib/util/debug';
 import { failwith } from "./lib/util/common";
+import { parse } from "./lib/parser/parser";
 
 //rom import
 export let rom:any;
@@ -138,4 +139,5 @@ async function Main(): Promise<void> {
     /**
      * for input string, read from file specified, if none, read from stdin
      */
+    console.log(await parse(ProcessArgs.file));
 }

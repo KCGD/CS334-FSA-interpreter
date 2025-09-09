@@ -1,11 +1,14 @@
-import { createReadStream, existsSync } from "fs";
+import { createReadStream, existsSync, readFileSync } from "fs";
 import { createInterface } from "readline";
+
+// index is token, value is state name
+type State = {[key:string]: string};
 
 export type Program = {
     lang: Array<string>;
     accept: Array<string>;
     start: string;
-    states: {[key:string]: Array<string>};
+    states: {[key:string]: State};
     vars: {[ley:string]: any};
 }
 
@@ -23,8 +26,15 @@ export type ParserState = "General" | "State";
  *  state definition terminates when next state defined OR EOF reached
  */
 
-export async function parse(file:string): Program {
-    let proto:Program = {} as Program;
+export async function parse(file:string): Promise<Program> {
+    let proto:Program = {
+        lang: [],
+        accept: [],
+        start: "",
+        states: {},
+        vars: {},
+    };
+
     let state:ParserState = "General";
     let state_name:string = "";
     let line_num = 0;
@@ -34,21 +44,13 @@ export async function parse(file:string): Program {
         throw new Error(`File "${file}" not found`);
     }
 
-    // create read stream
-    const reads = createInterface({
-        input: createReadStream(file)
-    })
+    // parser function
+    async function _parse(line:string | null) {
+        // do not parse comments
+        if(line?.trim().startsWith('#')) {
+            return;
+        }
 
-    reads.on("line", (line) => {
-        _line(line);
-    })
-
-    reads.on("close", () => {
-        _line(null);
-    })
-
-
-    function _line(line:string | null) {
         switch(state) {
             case "General": {
                 // break - eof
@@ -79,24 +81,148 @@ export async function parse(file:string): Program {
                     // is array or literal?
                     if(var_value.startsWith('[')) {
                         // array
-                        let select = REG.between_brackets.exec(var_value)[0];
+                        let reg_result = REG.between_brackets.exec(var_value);
+                        let select = reg_result ? reg_result[0] : null;
                         if(!select) {
                             // parser error, bad array value
                             throw new Error(parse_error(line, line_num, `Invalid array syntax.`));
                         }
 
                         // assign array value
-                        let array_val = select.split(',')
+                        let array_val = select.split(',').map((item) => {return item.trim()});
+                        if(array_val.length < 1) {
+                            throw new Error(parse_error(line, line_num, `Array value cannot be empty.`));
+                        }
+
+                        // assign value
+                        proto.vars[var_name] = array_val;
                     } else {
                         // literal
-                        
+                        proto.vars[var_name] = var_value;
                     }
                 }
             } break;
-        }
+
+            // State
+            case "State": {
+                // break - eof
+                if(line === null) {
+                    break;
+                }
+
+                line = line.trim();
+
+                // break - assignment vs definition
+                let semicolon_split = line.split(':');
+                let equals_split = line.split('=');
+
+                // state definition - switch to new state
+                if(semicolon_split.length === 2 && semicolon_split[1].length === 0) {
+                    // is a state definition
+                    state_name = semicolon_split[0].trim();
+                    break;
+                }
+
+                // transform function definition - token -> state
+                // proto states [state name]["token"] = state
+                let tab_split = line.split('\t');
+                if(tab_split.length === 2 && tab_split[1].length > 0) {
+                    let token = tab_split[0].trim();
+                    let destination_state = tab_split[1].trim();
+
+                    // allocate new state if it isnt already defined
+                    if(!proto.states[state_name]) {
+                        proto.states[state_name] = {};
+                    }
+
+                    proto.states[state_name][token] = destination_state;
+                } else if (tab_split.length === 2 && tab_split[1].length < 1) {
+                    // transform function with no state definition
+                    throw new Error(parse_error(line, line_num, `Transform function missing state definition.`));
+                }
+            } break;
+        };
 
         line_num++;
     }
+
+    // read file and parse by line
+    const FILE = readFileSync(file).toString().split('\n');
+    for(const line of FILE) {
+        await _parse(line);
+    }
+
+    // switch explicit and implicit definitions for langs
+    // implicitly derive language and states used in automata
+    let lang_set = new Set<string>();
+    let state_set = new Set<string>();
+
+    for(const state_name of Object.keys(proto.states)) {
+        let state_tokens = Object.keys(proto.states[state_name]);
+
+        for(const token of state_tokens) {
+            lang_set.add(token);
+            state_set.add(proto.states[state_name][token]);
+        }
+    }
+
+    // if lang defined explicitly, use it, else use implied language
+    if(proto.vars["lang"]) {
+        if(!Array.isArray(proto.vars["lang"])) {
+            throw new Error(`Illegal type for lang definition, expected array.`);
+        }
+        proto.lang = proto.vars.lang;
+    } else {
+        // use lang set
+        proto.lang = [...lang_set];
+    }
+
+    // match used language against explicit set (catches illegal tokens when language explicitly defined)
+    for(const token of [...lang_set]) {
+        if(!proto.lang.includes(token)) {
+            throw new Error(`Illegal token '${token}' used but not defined in language set.`);
+        }
+    }
+
+    // check for transform functions which point to undefined states
+    let known_states = Object.keys(proto.states);
+    for(const state of [...state_set]) {
+        if(!known_states.includes(state)) {
+            throw new Error(`Illegal reference to undefined state ${state}.`);
+        }
+    }
+    
+    // define starting state
+    if(!proto.vars["start"]) {
+        throw new Error(`Missing starting state definition.`);
+    } else {
+        proto.start = proto.vars["start"];
+    }
+
+    // make sure starting state exists
+    if(!known_states.includes(proto.start)) {
+        throw new Error(`Undefined reference to ${proto.start} as starting state.`);
+    }
+
+    // define and validate accept states
+    if(!proto.vars["accept"]) {
+        throw new Error(`Missing accept states definition.`);
+    } else {
+        if(!Array.isArray(proto.vars["accept"])) {
+            throw new Error(`Illegal type for accept states definition, expected array.`);
+        }
+
+        for(const state of proto.vars["accept"] as Array<string>) {
+            if(!known_states.includes(state)) {
+                throw new Error(`Undefined reference to state ${state} in accepted states.`);
+            }
+        }
+
+        // use accept state
+        proto.accept = proto.vars.accept;
+    }
+
+    return proto;
 }
 
 function parse_error(line:string, line_n:number, reason:string): string {
