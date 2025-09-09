@@ -20,6 +20,11 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
     }
 
     for(const token of string) {
+        // make sure token exists in language
+        if(!prog.lang.includes(token)) {
+            throw new Error(`Recieved token '${token}' which does not exist in language [${prog.lang.join(", ")}]`);
+        }
+
         let destination = prog.states[current_state][token];
 
         let event = {

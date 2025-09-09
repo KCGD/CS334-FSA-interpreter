@@ -5,7 +5,7 @@ import { isSea } from 'node:sea';
 import { Log } from './lib/util/debug';
 import { failwith } from "./lib/util/common";
 import { parse, Program } from "./lib/parser/parser";
-import { interpret } from "./lib/interpreter/nterpreter";
+import { Answer, interpret } from "./lib/interpreter/nterpreter";
 
 //rom import
 export let rom:any;
@@ -149,7 +149,12 @@ async function Main(): Promise<void> {
     }
 
     // run interpreter
-    const answer = await interpret(program, ProcessArgs.string);
+    let answer = {} as Answer;
+    try {
+        answer = await interpret(program, ProcessArgs.string);
+    } catch (e) {
+        failwith(`Interpreter error occured: ${e}`);
+    }
 
     // print history
     process.stdout.write(`> [START]`);
