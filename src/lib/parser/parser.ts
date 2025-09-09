@@ -135,6 +135,11 @@ export async function parse(file:string): Promise<Program> {
                         proto.states[state_name] = {};
                     }
 
+                    // check if token already defined in state
+                    if(proto.states[state_name][token]) {
+                        throw new Error(parse_error(line, line_num, `Token '${token}' collides with previously defined token.`));
+                    }
+
                     proto.states[state_name][token] = destination_state;
                 } else if (tab_split.length === 2 && tab_split[1].length < 1) {
                     // transform function with no state definition
@@ -226,5 +231,5 @@ export async function parse(file:string): Promise<Program> {
 }
 
 function parse_error(line:string, line_n:number, reason:string): string {
-    return `Parser error occured on line ${line_n}: ${reason}\n\n${line_n}|\t${line}\n\n`;
+    return `Parser error occured on line ${line_n}: ${reason}\n\n${line_n}|\t${line.trim()}\n\n`;
 }
