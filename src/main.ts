@@ -152,11 +152,11 @@ async function Main(): Promise<void> {
     const answer = await interpret(program, ProcessArgs.string);
 
     // print history
-    process.stdout.write(`--> [START]`);
+    process.stdout.write(`> [START]`);
     for(const event of answer.path) {
-        process.stdout.write(`\n--> [${event.state} + ${event.token} -> ${event.destination}]`);
+        process.stdout.write(`\n> ${event.state} (${event.token} -> ${event.destination})`);
     }
-    process.stderr.write("\n--> [END]\n");
+    process.stderr.write("\n> [END]\n");
 
     // program analysis
     if(program.accept.includes(answer.ending_state)) {
