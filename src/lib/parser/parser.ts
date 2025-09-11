@@ -1,8 +1,8 @@
 import { createReadStream, existsSync, readFileSync } from "fs";
 import { createInterface } from "readline";
 
-// index is token, value is state name
-type State = {[key:string]: string};
+// index is token, value is state subset -> key is state name, number is probability
+type State = {[key:string]: {[key:string]: number}};
 
 export type Program = {
     lang: Array<string>;
@@ -125,6 +125,7 @@ export async function parse(file:string): Promise<Program> {
 
                 // transform function definition - token -> state
                 // proto states [state name]["token"] = state
+                // 
                 let tab_split = line.split('\t');
                 if(tab_split.length === 2 && tab_split[1].length > 0) {
                     let token = tab_split[0].trim();
@@ -138,9 +139,72 @@ export async function parse(file:string): Promise<Program> {
                     // check if token already defined in state
                     if(proto.states[state_name][token]) {
                         throw new Error(parse_error(line, line_num, `Token '${token}' collides with previously defined token.`));
-                    }
+                    };
 
-                    proto.states[state_name][token] = destination_state;
+                    // check if state is single state or state subset (array checker)
+                    if(destination_state.startsWith('[')) {
+                        // array
+                        let reg_result = REG.between_brackets.exec(destination_state);
+                        let select = reg_result ? reg_result[0] : null;
+                        if(!select) {
+                            // parser error, bad array value
+                            throw new Error(parse_error(line, line_num, `Invalid array syntax.`));
+                        }
+
+                        // assign array value
+                        let array_val = select.split(',').map((item) => {return item.trim()});
+                        if(array_val.length < 1) {
+                            throw new Error(parse_error(line, line_num, `Array value cannot be empty.`));
+                        }
+
+                        // check if probability given (sep by '-')
+                        // if none, probability is 1
+                        for(const i in array_val) {
+                            let value = array_val[i];
+                            let dashsplit = value.trim().split('-');
+
+                            // check if probability supplied
+                            if(dashsplit.length === 2) {
+                                let probability = parseFloat(dashsplit[0].trim());
+                                let destination = dashsplit[1].trim();
+                                console.log(dashsplit);
+
+                                // make sure probability is valid number
+                                if(Number.isNaN(probability)) {
+                                    throw new Error(parse_error(line, line_num, `Invalid probability (expected float): ${dashsplit[0].trim()}`));
+                                }
+
+                                // make sure state is valid string
+                                if(destination.length < 1) {
+                                    throw new Error(parse_error(line, line_num, `Destination state must not be empty.`));
+                                }
+
+                                // good definition
+                                if(typeof proto.states[state_name][token] === "undefined") {
+                                    proto.states[state_name][token] = {};
+                                }
+                                proto.states[state_name][token][destination] = probability;
+
+                            // single probability inside an array
+                            } else if (!array_val[i].includes('-')) {
+                                if(typeof proto.states[state_name][token] === "undefined") {
+                                    proto.states[state_name][token] = {};
+                                }
+                                proto.states[state_name][token][array_val[i]] = 1;
+
+                            // syntax error
+                            } else {
+                                // syntax error
+                                throw new Error(parse_error(line, line_num, `Syntax error in state definition array (position ${i}).`));
+                            }
+                        }                        
+                    } else {
+                        // single state definition
+                        if(typeof proto.states[state_name][token] === "undefined") {
+                            proto.states[state_name][token] = {};
+                        }
+                        proto.states[state_name][token][destination_state] = 1;
+                    }
                 } else if (tab_split.length === 2 && tab_split[1].length < 1) {
                     // transform function with no state definition
                     throw new Error(parse_error(line, line_num, `Transform function missing state definition.`));
@@ -167,7 +231,10 @@ export async function parse(file:string): Promise<Program> {
 
         for(const token of state_tokens) {
             lang_set.add(token);
-            state_set.add(proto.states[state_name][token]);
+
+            for(const state of Object.keys(proto.states[state_name][token])) {
+                state_set.add(state);
+            }
         }
     }
 

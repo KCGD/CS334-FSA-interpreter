@@ -25,8 +25,13 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
             throw new Error(`Recieved token '${token}' which does not exist in language [${prog.lang.join(", ")}]`);
         }
 
-        let destination = prog.states[current_state][token];
+        // interpret
+        let destination = pickByWeight(prog.states[current_state][token]);
+        if(!destination) {
+            throw new Error(`Interpreter error: fault in choosing a transform function: ${prog.states[current_state][token]}`);
+        }
 
+        // record
         let event = {
             state: current_state,
             token: token,
@@ -42,3 +47,21 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
         path: path
     }
 }
+
+function pickByWeight(weights: {[key:string]: number}) {
+    const entries = Object.entries(weights);
+    const total = entries.reduce((sum, [, w]) => sum + w, 0);
+    let chosen: string | undefined = undefined;
+  
+    let rand = Math.random() * total;
+    for (const [key, weight] of entries) {
+        if (rand < weight) {
+            chosen = key;
+            break;
+        }
+        rand -= weight;
+    }
+
+    return chosen;
+}
+  

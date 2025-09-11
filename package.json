@@ -1,5 +1,5 @@
 {
-  "name": "fsa",
+  "name": "ndfa",
   "version": "0.0.0-0",
   "description": "package description",
   "packageOpts": {

@@ -148,7 +148,6 @@ async function Main(): Promise<void> {
         failwith(`Encountered error parsing "${ProcessArgs.file}": ${e}`);
     }
 
-    // run interpreter
     let answer = {} as Answer;
     try {
         answer = await interpret(program, ProcessArgs.string);
