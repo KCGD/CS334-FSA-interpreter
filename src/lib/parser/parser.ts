@@ -259,7 +259,7 @@ export async function parse(file:string): Promise<Program> {
     // check for transform functions which point to undefined states
     let known_states = Object.keys(proto.states);
     for(const state of [...state_set]) {
-        if(!known_states.includes(state)) {
+        if(!known_states.includes(state) && state !== "null") {
             throw new Error(`Illegal reference to undefined state ${state}.`);
         }
     }
@@ -272,6 +272,10 @@ export async function parse(file:string): Promise<Program> {
     }
 
     // make sure starting state exists
+    // make sure starting state isnt null
+    if(proto.start === "null") {
+        throw new Error(`Starting state cannot be a null state.`);
+    }
     if(!known_states.includes(proto.start)) {
         throw new Error(`Undefined reference to ${proto.start} as starting state.`);
     }
@@ -285,6 +289,9 @@ export async function parse(file:string): Promise<Program> {
         }
 
         for(const state of proto.vars["accept"] as Array<string>) {
+            if(state === "null") {
+                throw new Error(`Accept states cannot include a null state.`);
+            }
             if(!known_states.includes(state)) {
                 throw new Error(`Undefined reference to state ${state} in accepted states.`);
             }

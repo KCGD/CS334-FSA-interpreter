@@ -40,6 +40,11 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
 
         path.push(event);
         current_state = destination;
+
+        // check for null state
+        if(current_state === "null") {
+            break;
+        }
     }
 
     return {
