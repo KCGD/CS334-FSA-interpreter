@@ -32,6 +32,7 @@ export type processArgs = {
     printVer: boolean;
     file: string | undefined;
     string: string | undefined;
+    dumpAst: boolean;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
@@ -40,7 +41,8 @@ export var ProcessArgs:processArgs = {
     "debug":true,
     printVer: false,
     file: undefined,
-    string: undefined
+    string: undefined,
+    dumpAst: false
 }
 
 //parse process arguments
@@ -72,6 +74,10 @@ for(let i = 0; i < process.argv.length; i++) {
             if(!ProcessArgs.string) {
                 failwith(`${process.argv[i]} requires an input.`);
             }
+        } break;
+
+        case "--dump-ast": {
+            ProcessArgs.dumpAst = true;
         } break;
 
         // build info
@@ -147,6 +153,13 @@ async function Main(): Promise<void> {
         program = await parse(ProcessArgs.file);
     } catch (e) {
         failwith(`Encountered error parsing "${ProcessArgs.file}": ${e}`);
+    }
+
+    // dump ast
+    if(ProcessArgs.dumpAst) {
+        Log(`I`, `----- [AST] -----`);
+        console.log(JSON.stringify(program, null, 4));
+        Log(`I`, `----- [END AST] -----`);
     }
 
     let answer = {} as Answer;
