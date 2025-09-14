@@ -6,6 +6,7 @@ import { Log } from './lib/util/debug';
 import { failwith } from "./lib/util/common";
 import { parse, Program } from "./lib/parser/parser";
 import { Answer, interpret } from "./lib/interpreter/nterpreter";
+import { greenBright, redBright } from "cli-color";
 
 //rom import
 export let rom:any;
@@ -164,8 +165,10 @@ async function Main(): Promise<void> {
 
     // program analysis
     if(program.accept.includes(answer.ending_state)) {
-        Log(`I`, `String was accepted (halted in state: ${answer.ending_state} of accepted states [${program.accept.join(", ")}])`);
+        console.log(greenBright(`STRING ACCEPTED.`));
+        Log(`I`, `Halted in state: ${answer.ending_state} of accepted states [${program.accept.join(", ")}]`);
     } else {
-        Log(`I`, `String was NOT accepted (halted in state: ${answer.ending_state} NOT in accepted states [${program.accept.join(", ")}])`);
+        console.log(redBright(`STRING NOT ACCEPTED.`));
+        Log(`I`, `Halted in state: ${answer.ending_state} NOT in accepted states [${program.accept.join(", ")}]`);
     }
 }

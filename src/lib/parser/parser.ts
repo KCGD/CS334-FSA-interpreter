@@ -51,6 +51,11 @@ export async function parse(file:string): Promise<Program> {
             return;
         }
 
+        // remove in-line comments
+        if(line?.includes('#')) {
+            line = line.split('#')[0].trim();
+        }
+
         switch(state) {
             case "General": {
                 // break - eof
