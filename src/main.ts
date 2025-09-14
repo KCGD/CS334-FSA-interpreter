@@ -19,7 +19,7 @@ if(isSea()) {
     rom = require(unpacked_rom_path).default;
 }
 
-const USAGE = `fsa <automata>.fsa <string> <args>`;
+const USAGE = `dfa <automata>.dfa -S <string> <args>`;
 
 //source map support
 require('source-map-support').install();
@@ -33,6 +33,8 @@ export type processArgs = {
     file: string | undefined;
     string: string | undefined;
     dumpAst: boolean;
+    quiet: boolean;
+    extquiet: boolean;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
@@ -42,7 +44,9 @@ export var ProcessArgs:processArgs = {
     printVer: false,
     file: undefined,
     string: undefined,
-    dumpAst: false
+    dumpAst: false,
+    quiet: false,
+    extquiet: false,
 }
 
 //parse process arguments
@@ -78,6 +82,17 @@ for(let i = 0; i < process.argv.length; i++) {
 
         case "--dump-ast": {
             ProcessArgs.dumpAst = true;
+        } break;
+
+        case "-q":
+        case "--quiet": {
+            ProcessArgs.quiet = true;
+        } break;
+
+        case "-qq":
+        case "--Quiet": {
+            ProcessArgs.extquiet = true;
+            ProcessArgs.quiet = true;
         } break;
 
         // build info
@@ -170,18 +185,35 @@ async function Main(): Promise<void> {
     }
 
     // print history
-    process.stdout.write(`> [START]`);
-    for(const event of answer.path) {
-        process.stdout.write(`\n> ${event.state} (${event.token} -> ${event.destination})`);
+    if(!ProcessArgs.quiet) {
+        process.stdout.write(`> [START]`);
+        for(const event of answer.path) {
+            process.stdout.write(`\n> ${event.state} (${event.token} -> ${event.destination})`);
+        }
+        process.stderr.write("\n> [END]\n");
     }
-    process.stderr.write("\n> [END]\n");
 
     // program analysis
-    if(program.accept.includes(answer.ending_state)) {
-        console.log(greenBright(`STRING ACCEPTED.`));
-        Log(`I`, `Halted in state: ${answer.ending_state} of accepted states [${program.accept.join(", ")}]`);
+    if(!ProcessArgs.extquiet) {
+        if(program.accept.includes(answer.ending_state)) {
+            console.log(greenBright(`STRING ACCEPTED.`));
+            Log(`I`, `Halted in state: ${answer.ending_state} of accepted states [${program.accept.join(", ")}]`);
+        } else {
+            console.log(redBright(`STRING NOT ACCEPTED.`));
+
+            // special case null
+            if(answer.ending_state === "null") {
+                Log(`I`, `Halted in null state (crash).`);
+            } else {
+                Log(`I`, `Halted in state: ${answer.ending_state} NOT in accepted states [${program.accept.join(", ")}]`);
+            }
+        }
     } else {
-        console.log(redBright(`STRING NOT ACCEPTED.`));
-        Log(`I`, `Halted in state: ${answer.ending_state} NOT in accepted states [${program.accept.join(", ")}]`);
+        // extra quiet, just print result.
+        if(program.accept.includes(answer.ending_state)) {
+            console.log(greenBright(`STRING ACCEPTED.`));
+        } else {
+            console.log(redBright(`STRING NOT ACCEPTED.`));
+        }
     }
 }
