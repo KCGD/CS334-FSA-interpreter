@@ -1,8 +1,8 @@
-import { createReadStream, existsSync, readFileSync } from "fs";
-import { createInterface } from "readline";
+import { existsSync, readFileSync } from "fs";
 
 // index is token, value is state subset -> key is state name, number is probability
 type State = {[key:string]: {[key:string]: number}};
+type Command = {command: string, args: Array<string>};
 
 export type Program = {
     lang: Array<string>;
@@ -10,10 +10,12 @@ export type Program = {
     start: string;
     states: {[key:string]: State};
     vars: {[ley:string]: any};
+    commands: {[key:string]: Array<Command>}
 }
 
 const REG = {
-    between_brackets: /(?<=\[)(.*?)(?=\])/
+    between_brackets: /(?<=\[)(.*?)(?=\])/,
+    between_parenthesis: /(?<=\()(.*?)(?=\))/
 }
 
 export type ParserState = "General" | "State";
@@ -33,6 +35,7 @@ export async function parse(file:string): Promise<Program> {
         start: "",
         states: {},
         vars: {},
+        commands: {}
     };
 
     let state:ParserState = "General";
@@ -120,6 +123,28 @@ export async function parse(file:string): Promise<Program> {
                 // break - assignment vs definition
                 let semicolon_split = line.split(':');
                 let equals_split = line.split('=');
+                let is_command = line.startsWith('$');
+                let parenthesis_split = line.split('(');
+
+                // command
+                if(parenthesis_split.length === 2 && is_command) {
+                    let params_str = `(${parenthesis_split[1]}`;
+                    let reg_res = REG.between_parenthesis.exec(params_str);
+                    let select = reg_res ? reg_res[0] : null;
+
+                    if(!select) {
+                        throw new Error(parse_error(line, line_num, `Invalid command parameter syntax.`));
+                    }
+
+                    let args = select.split(',').map((item) => {return item.trim()});
+
+                    if(!proto.commands[state_name]) {
+                        proto.commands[state_name] = new Array<Command>();
+                    }
+
+                    proto.commands[state_name].push({command: parenthesis_split[0].trim(), args: args});
+                    break;
+                }
 
                 // state definition - switch to new state
                 if(semicolon_split.length === 2 && semicolon_split[1].length === 0) {

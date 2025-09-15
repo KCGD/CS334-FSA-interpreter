@@ -25,6 +25,13 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
             throw new Error(`Recieved token '${token}' which does not exist in language [${prog.lang.join(", ")}]`);
         }
 
+        // run commands
+        if(prog.commands[current_state]) {
+            for(const c of prog.commands[current_state]) {
+                command(c.command, c.args);
+            }
+        }
+
         // interpret
         let destination = pickByWeight(prog.states[current_state][token]);
         if(!destination) {
@@ -50,6 +57,18 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
     return {
         ending_state: current_state,
         path: path
+    }
+}
+
+function command(command:string, args:Array<string>): void {
+    switch(command) {
+        case "$log": {
+            console.log(`| ${args.join(' ')}`);
+        } break;
+
+        default: {
+            throw new Error(`Interpreter error: Unknown command "${command}" in "\$${command}(${args.join(", ")})"`);
+        }
     }
 }
 
