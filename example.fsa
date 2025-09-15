@@ -9,6 +9,8 @@ q1:
 	1	q0
 	0	q2
 q2:
+	$log(pause - q2)
+	$pause()
 	1	q0
 	0	q3
 q3:

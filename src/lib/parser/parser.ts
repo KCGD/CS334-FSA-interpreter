@@ -132,11 +132,7 @@ export async function parse(file:string): Promise<Program> {
                     let reg_res = REG.between_parenthesis.exec(params_str);
                     let select = reg_res ? reg_res[0] : null;
 
-                    if(!select) {
-                        throw new Error(parse_error(line, line_num, `Invalid command parameter syntax.`));
-                    }
-
-                    let args = select.split(',').map((item) => {return item.trim()});
+                    let args = select? select.split(',').map((item) => {return item.trim()}) : [];
 
                     if(!proto.commands[state_name]) {
                         proto.commands[state_name] = new Array<Command>();

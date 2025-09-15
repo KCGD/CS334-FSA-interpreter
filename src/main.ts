@@ -1,12 +1,12 @@
 import * as path from "path";
 
 //debug lib imports
-import { isSea } from 'node:sea';
-import { Log } from './lib/util/debug';
-import { failwith } from "./lib/util/common";
-import { parse, Program } from "./lib/parser/parser";
-import { Answer, interpret } from "./lib/interpreter/nterpreter";
 import { greenBright, redBright } from "cli-color";
+import { isSea } from 'node:sea';
+import { Answer, interpret } from "./lib/interpreter/nterpreter";
+import { parse, Program } from "./lib/parser/parser";
+import { failwith } from "./lib/util/common";
+import { Log } from './lib/util/debug';
 
 //rom import
 export let rom:any;
@@ -182,15 +182,6 @@ async function Main(): Promise<void> {
         answer = await interpret(program, ProcessArgs.string);
     } catch (e) {
         failwith(`Interpreter error occured: ${e}`);
-    }
-
-    // print history
-    if(!ProcessArgs.quiet) {
-        process.stdout.write(`> [START]`);
-        for(const event of answer.path) {
-            process.stdout.write(`\n> ${event.state} (${event.token} -> ${event.destination})`);
-        }
-        process.stderr.write("\n> [END]\n");
     }
 
     // program analysis

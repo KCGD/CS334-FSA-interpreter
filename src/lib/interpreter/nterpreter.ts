@@ -1,4 +1,8 @@
+import PromptSync from "prompt-sync";
+import { ProcessArgs } from "../../main";
 import { Program } from "../parser/parser";
+
+const prompt = PromptSync();
 
 type Event = {
     state: string;
@@ -17,6 +21,11 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
 
     if(!string) {
         throw new Error(`No string supplied (add STDIN support!)`);
+    }
+
+    // start log
+    if(!ProcessArgs.quiet) {
+        process.stdout.write(`> [START]`);
     }
 
     for(const token of string) {
@@ -45,6 +54,11 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
             destination: destination
         } as Event;
 
+        // print step
+        if(!ProcessArgs.quiet) {
+            process.stdout.write(`\n> ${event.state} (${event.token} -> ${event.destination})`);
+        }
+
         path.push(event);
         current_state = destination;
 
@@ -52,6 +66,11 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
         if(current_state === "null") {
             break;
         }
+    }
+
+    // end message
+    if(!ProcessArgs.quiet) {
+        process.stderr.write("\n> [END]\n");
     }
 
     return {
@@ -63,7 +82,13 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
 function command(command:string, args:Array<string>): void {
     switch(command) {
         case "$log": {
-            console.log(`| ${args.join(' ')}`);
+            if(!ProcessArgs.extquiet) {
+                process.stdout.write(`\n${args.join(' ')}`);
+            }
+        } break;
+
+        case "$pause": {
+            prompt({});
         } break;
 
         default: {
