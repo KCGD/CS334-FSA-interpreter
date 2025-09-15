@@ -7,6 +7,7 @@ import { Answer, interpret } from "./lib/interpreter/nterpreter";
 import { parse, Program } from "./lib/parser/parser";
 import { failwith } from "./lib/util/common";
 import { Log } from './lib/util/debug';
+import { PrettyPrint } from "./lib/parser/printer";
 
 //rom import
 export let rom:any;
@@ -35,6 +36,7 @@ export type processArgs = {
     dumpAst: boolean;
     quiet: boolean;
     extquiet: boolean;
+    pretty_print: string | undefined;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
@@ -47,6 +49,7 @@ export var ProcessArgs:processArgs = {
     dumpAst: false,
     quiet: false,
     extquiet: false,
+    pretty_print: undefined,
 }
 
 //parse process arguments
@@ -93,6 +96,14 @@ for(let i = 0; i < process.argv.length; i++) {
         case "--Quiet": {
             ProcessArgs.extquiet = true;
             ProcessArgs.quiet = true;
+        } break;
+
+        case "--pretty-print":
+        case "-pp": {
+            ProcessArgs.pretty_print = process.argv[i+1];
+            if(!ProcessArgs.pretty_print) {
+                failwith(`${process.argv[i]} expects a file path.`);
+            }
         } break;
 
         // build info
@@ -175,6 +186,18 @@ async function Main(): Promise<void> {
         Log(`I`, `----- [AST] -----`);
         console.log(JSON.stringify(program, null, 4));
         Log(`I`, `----- [END AST] -----`);
+    }
+
+    // pretty print
+    if(ProcessArgs.pretty_print) {
+        try {
+            await PrettyPrint(program, ProcessArgs.pretty_print);
+        } catch (e) {
+            failwith(`Pretty-print failed: ${e}`);
+        };
+
+        Log(`I`, `Printed dfa to: ${ProcessArgs.pretty_print}`);
+        process.exit(0);
     }
 
     let answer = {} as Answer;

@@ -1,7 +1,38 @@
 import { existsSync, readFileSync } from "fs";
 
+/**
+ * Export snippets
+ */
+export const Parser_Tokens = {
+    DEFINE_ARRAY: (key:string, content:Array<string>) => {return `${key} = [${content.join(', ')}]`},
+    DEFINE_VALUE: (key:string, value:string) => {return `${key} = ${value}`},
+    DEFINE_STATE: (key:string) => {return `${key}:`},
+    DEFINE_COMMAND: (command:Command) => {return `${command.command} (${command.args.join(", ")})`},
+    DEFINE_TRANSFORM: (transform:Transform_Proto) => {
+        let transform_keys = Object.keys(transform.transforms);
+
+        // single state transform
+        if(transform_keys.length < 2) {
+            return `${transform.key}\t${transform_keys[0]}`;
+        } else {
+            // multi state transform (non-deterministic)
+            let dest_states = [];
+            for(const t of transform_keys) {
+                dest_states.push((transform.transforms[t] === 1)
+                    ? t                                 // unweighted transform
+                    : `${transform.transforms[t]}-${t}` // weighted transform
+                );
+            }
+
+            // return transform in array syntax
+            return `${transform.key}\t[${dest_states.join(", ")}]`;
+        }
+    }
+}
+
 // index is token, value is state subset -> key is state name, number is probability
 type State = {[key:string]: {[key:string]: number}};
+type Transform_Proto = {key:string, transforms: {[key:string]: number}}
 type Command = {command: string, args: Array<string>};
 
 export type Program = {
@@ -9,7 +40,7 @@ export type Program = {
     accept: Array<string>;
     start: string;
     states: {[key:string]: State};
-    vars: {[ley:string]: any};
+    vars: {[ley:string]: string | Array<string>};
     commands: {[key:string]: Array<Command>}
 }
 
@@ -193,7 +224,6 @@ export async function parse(file:string): Promise<Program> {
                             if(dashsplit.length === 2) {
                                 let probability = parseFloat(dashsplit[0].trim());
                                 let destination = dashsplit[1].trim();
-                                console.log(dashsplit);
 
                                 // make sure probability is valid number
                                 if(Number.isNaN(probability)) {
@@ -294,6 +324,9 @@ export async function parse(file:string): Promise<Program> {
     if(!proto.vars["start"]) {
         throw new Error(`Missing starting state definition.`);
     } else {
+        if(Array.isArray(proto.vars["start"])) {
+            throw new Error(`Illegal type for start definition, expected string, recieved array.`);
+        }
         proto.start = proto.vars["start"];
     }
 
