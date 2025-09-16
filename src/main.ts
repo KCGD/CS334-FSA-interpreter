@@ -3,7 +3,7 @@ import * as path from "path";
 //debug lib imports
 import { greenBright, redBright } from "cli-color";
 import { isSea } from 'node:sea';
-import { Answer, interpret } from "./lib/interpreter/nterpreter";
+import { Answer, interpret } from "./lib/interpreter/interpreter";
 import { parse, Program } from "./lib/parser/parser";
 import { failwith } from "./lib/util/common";
 import { Log } from './lib/util/debug';
