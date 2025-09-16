@@ -8,6 +8,8 @@ import { parse, Program } from "./lib/parser/parser";
 import { failwith } from "./lib/util/common";
 import { Log } from './lib/util/debug';
 import { PrettyPrint } from "./lib/parser/printer";
+import { readFileSync } from "fs";
+import { ConvertGraph } from "./lib/fsa_design/json_parse";
 
 //rom import
 export let rom:any;
@@ -37,6 +39,8 @@ export type processArgs = {
     quiet: boolean;
     extquiet: boolean;
     pretty_print: string | undefined;
+    load_json: string | undefined;
+    start_state: string | undefined;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
@@ -50,10 +54,14 @@ export var ProcessArgs:processArgs = {
     quiet: false,
     extquiet: false,
     pretty_print: undefined,
+    load_json: undefined,
+    start_state: undefined,
 }
 
 //parse process arguments
 for(let i = 0; i < process.argv.length; i++) {
+    let arg = process.argv[i];
+    let next = process.argv[i+1];
     switch(process.argv[i]) {
         case "--help":
         case "-h": {
@@ -104,6 +112,21 @@ for(let i = 0; i < process.argv.length; i++) {
             if(!ProcessArgs.pretty_print) {
                 failwith(`${process.argv[i]} expects a file path.`);
             }
+        } break;
+
+        case "-J":
+        case "--load-json": {
+            if(!next) {
+                failwith(`${arg} expects a file path.`);
+            }
+            ProcessArgs.load_json = next;
+        } break;
+
+        case "--start": {
+            if(!next) {
+                failwith(`${arg} requires a start state value.`);
+            }
+            ProcessArgs.start_state = next;
         } break;
 
         // build info
@@ -175,10 +198,21 @@ async function Main(): Promise<void> {
      */
     // try parsing file
     let program:Program | undefined = undefined;
-    try {
-        program = await parse(ProcessArgs.file);
-    } catch (e) {
-        failwith(`Encountered error parsing "${ProcessArgs.file}": ${e}`);
+    if(!ProcessArgs.load_json) {
+        // normal program parsing
+        try {
+            program = await parse(ProcessArgs.file);
+        } catch (e) {
+            failwith(`Encountered error parsing "${ProcessArgs.file}": ${e}`);
+        }
+    } else {
+        // load from JSON
+        try {
+            let obj = JSON.parse(readFileSync(ProcessArgs.load_json).toString());
+            program = await ConvertGraph(obj);
+        } catch (e) {
+            failwith(`Failed to load JSON graph: ${e}`);
+        }
     }
 
     // dump ast
@@ -202,7 +236,9 @@ async function Main(): Promise<void> {
 
     let answer = {} as Answer;
     try {
-        answer = await interpret(program, ProcessArgs.string);
+        answer = await interpret(program, ProcessArgs.string, {
+            "ignoreLangCheck": (!!ProcessArgs.load_json)    // ignore language validation when loading from json
+        });
     } catch (e) {
         failwith(`Interpreter error occured: ${e}`);
     }

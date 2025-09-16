@@ -15,7 +15,7 @@ export async function PrettyPrint(prog:Program, file:string): Promise<void> {
         /**
          * Create write stream
          */
-        const out = createWriteStream("./pretty.dfa");
+        const out = createWriteStream(file);
         
         out.on("open", () => {
             /**
@@ -44,7 +44,7 @@ export async function PrettyPrint(prog:Program, file:string): Promise<void> {
                 out.write(`${Parser_Tokens.DEFINE_STATE(state_key)}\n`);
 
                 // define commands
-                let commands = prog.commands[state_key];
+                let commands = (prog.commands) ? prog.commands[state_key] : null;
                 if(commands) {
                     for(const command of commands) {
                         out.write(`\t${Parser_Tokens.DEFINE_COMMAND(command)}\n`);

@@ -31,17 +31,17 @@ export const Parser_Tokens = {
 }
 
 // index is token, value is state subset -> key is state name, number is probability
-type State = {[key:string]: {[key:string]: number}};
-type Transform_Proto = {key:string, transforms: {[key:string]: number}}
-type Command = {command: string, args: Array<string>};
+export type State = {[key:string]: {[key:string]: number}};
+export type Transform_Proto = {key:string, transforms: {[key:string]: number}}
+export type Command = {command: string, args: Array<string>};
 
 export type Program = {
     lang: Array<string>;
     accept: Array<string>;
     start: string;
     states: {[key:string]: State};
-    vars: {[ley:string]: string | Array<string>};
-    commands: {[key:string]: Array<Command>}
+    vars: {[key:string]: string | Array<string>};
+    commands?: {[key:string]: Array<Command>}
 }
 
 const REG = {
@@ -164,6 +164,10 @@ export async function parse(file:string): Promise<Program> {
                     let select = reg_res ? reg_res[0] : null;
 
                     let args = select? select.split(',').map((item) => {return item.trim()}) : [];
+
+                    if(!proto.commands) {
+                        proto.commands = {};
+                    }
 
                     if(!proto.commands[state_name]) {
                         proto.commands[state_name] = new Array<Command>();

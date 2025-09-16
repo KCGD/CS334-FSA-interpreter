@@ -15,7 +15,11 @@ export type Answer = {
     path: Array<Event>;
 }
 
-export async function interpret(prog:Program, string?:string): Promise<Answer> {
+export type InterpreterOpts = {
+    ignoreLangCheck: boolean;
+}
+
+export async function interpret(prog:Program, string?:string, opts?:InterpreterOpts): Promise<Answer> {
     let path = new Array<Event>;
     let current_state = prog.start;
 
@@ -30,14 +34,18 @@ export async function interpret(prog:Program, string?:string): Promise<Answer> {
 
     for(const token of string) {
         // make sure token exists in language
-        if(!prog.lang.includes(token)) {
-            throw new Error(`Recieved token '${token}' which does not exist in language [${prog.lang.join(", ")}]`);
+        if(!opts?.ignoreLangCheck) {
+            if(!prog.lang.includes(token)) {
+                throw new Error(`Recieved token '${token}' which does not exist in language [${prog.lang.join(", ")}]`);
+            }
         }
 
         // run commands
-        if(prog.commands[current_state]) {
-            for(const c of prog.commands[current_state]) {
-                command(c.command, c.args);
+        if(prog.commands) {
+            if(prog.commands[current_state]) {
+                for(const c of prog.commands[current_state]) {
+                    command(c.command, c.args);
+                }
             }
         }
 
