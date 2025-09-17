@@ -22,7 +22,7 @@ export type InterpreterOpts = {
 class InterpreterState {
     private ancestry: Array<string>;
     public current_state: string;
-    private path: Array<Event>;
+    public path: Array<Event>;
 
     constructor(state:string, ancestry?:Array<string>, path?:Array<Event>) {
         this.current_state = state;
@@ -103,8 +103,8 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
     }
 
     return {
-        ending_state: current_state,
-        path: path
+        ending_state: interpreter_states[0].current_state,
+        path: interpreter_states[0].path
     }
 }
 
