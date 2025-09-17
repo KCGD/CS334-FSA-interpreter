@@ -1,15 +1,18 @@
 import { ProcessArgs } from "../../main";
-import { Program, State } from "../parser/parser";
+import { Program } from "../parser/parser";
+import { Log } from "../util/debug";
 
 export type Graph = {
     links: Array<{
-        lineAngleAdjust: number;
-        nodeA: number;
-        nodeB: number;
+        lineAngleAdjust?: number;
+        anchorAngle?: number;
+        nodeA?: number;
+        nodeB?: number;
+        node?: number;
         parallelPart: number;
         perpendicularPart: number;
         text: string;
-        type: "Link";
+        type: "Link" | "SelfLink";
     }>;
     nodes: Array<{
         "x": number;
@@ -78,31 +81,61 @@ export async function ConvertGraph(obj:any): Promise<Program> {
     for(const i in links) {
         const link = links[i];
         const key = link.text;
-        const source_index = link.nodeA;
-        const dest_index = link.nodeB;
 
-        // always save destination states in array. parser will treat the same
-        // multiple links with same key ==> ndfa
-        let src_state = state_name_by_index[String(source_index)];
-        let dst_state = state_name_by_index[String(dest_index)];
-        if(!src_state) {
-            throw new Error(`Out of bounds error [source]: Reference to undefined state at index ${source_index}`);
-        }
-        if(!dst_state) {
-            throw new Error(`Out of bounds error [destination]: Reference to undefined state at index ${source_index}`);
-        }
+        switch(link.type) {
+            case "Link": {
+                const source_index = link.nodeA;
+                const dest_index = link.nodeB;
 
-        // define state
-        if(!proto.states[src_state]) {
-            proto.states[src_state] = {};
-        }
+                // always save destination states in array. parser will treat the same
+                // multiple links with same key ==> ndfa
+                let src_state = state_name_by_index[String(source_index)];
+                let dst_state = state_name_by_index[String(dest_index)];
+                if(!src_state) {
+                    throw new Error(`Out of bounds error [source]: Reference to undefined state at index ${source_index}`);
+                }
+                if(!dst_state) {
+                    throw new Error(`Out of bounds error [destination]: Reference to undefined state at index ${source_index}`);
+                }
 
-        // define key
-        if(!proto.states[src_state][key]) {
-            proto.states[src_state][key] = {};
-        }
+                // define state
+                if(!proto.states[src_state]) {
+                    proto.states[src_state] = {};
+                }
 
-        proto.states[src_state][key][dst_state] = 1;
+                // define key
+                if(!proto.states[src_state][key]) {
+                    proto.states[src_state][key] = {};
+                }
+
+                proto.states[src_state][key][dst_state] = 1;
+            } break;
+
+            case "SelfLink": {
+                const dest_index = link.node as number;
+                let dst_state = state_name_by_index[String(dest_index)];
+
+                if(!dst_state) {
+                    throw new Error(`Out of bounds error [destination]: Reference to undefined state at index ${dest_index}`);
+                }
+
+                // define state
+                if(!proto.states[dst_state]) {
+                    proto.states[dst_state] = {};
+                }
+
+                // define key
+                if(!key || key.length < 1) {
+                    Log(`W`, `Found link to ${dst_state} with no key definition.`);
+                } else {
+                    if(!proto.states[dst_state][key]) {
+                        proto.states[dst_state][key] = {};
+                    }
+
+                    proto.states[dst_state][key][dst_state] = 1;
+                }
+            } break;
+        }
     }
 
     return proto;
@@ -139,11 +172,13 @@ export async function ValidateGraph(obj:any): Promise<Graph> {
      */
     for(const line of links) {
         try {
-            assert("lineAngleAdjust", line.lineAngleAdjust, "number");
-            assert("nodeA", line.nodeA, "number");
-            assert("nodeB", line.nodeB, "number");
-            assert("parallelPart", line.parallelPart, "number");
-            assert("perpendicularPart", line.perpendicularPart, "number");
+            assert("lineAngleAdjust", line.lineAngleAdjust, ["number", "undefined"]);
+            assert("anchorAngle", line.anchorAngle, ["number", "undefined"]);
+            assert("nodeA", line.nodeA, ["number", "undefined"]);
+            assert("nodeB", line.nodeB, ["number", "undefined"]);
+            assert("node", line.node, ["number", "undefined"])
+            assert("parallelPart", line.parallelPart, ["number", "undefined"]);
+            assert("perpendicularPart", line.perpendicularPart, ["number", "undefined"]);
             assert("text", line.text, "string");
             assert("type", line.type, "string");  // expected value is "Link"
         } catch (e) {
@@ -154,8 +189,13 @@ export async function ValidateGraph(obj:any): Promise<Graph> {
     return obj as Graph;
 }
 
-function assert(prop:string, value:any, type:string) {
-    if(typeof value !== type) {
+function assert(prop:string, value:any, type:string | Array<string>) {
+    if(Array.isArray(type)) {
+        if(!type.includes(typeof value)) {
+            throw new Error(`Expected any of type [${type.join(", ")}] for property ${prop}. Recieved "${typeof value}"`);
+        }
+    }
+    else if(typeof value !== type) {
         throw new Error(`Expected type "${type}" for property ${prop}. Recieved "${typeof value}"`);
     }
 }
