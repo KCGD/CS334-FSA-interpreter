@@ -187,7 +187,10 @@ export async function parse(file:string): Promise<Program> {
                 // transform function definition - token -> state
                 // proto states [state name]["token"] = state
                 // 
-                let tab_split = line.split('\t');
+                let tab_split = (line.includes('\t'))
+                    ? line.split('\t')
+                    : line.split("  ");
+
                 if(tab_split.length === 2 && tab_split[1].length > 0) {
                     let token = tab_split[0].trim();
                     let destination_state = tab_split[1].trim();
