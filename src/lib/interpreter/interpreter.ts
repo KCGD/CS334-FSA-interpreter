@@ -3,7 +3,6 @@ import { ProcessArgs } from "../../main";
 import { Program } from "../parser/parser";
 
 const prompt = PromptSync();
-const TERM_ON_ACCEPT = true;
 const CONSTANT_SYMBOLS = ["null", "\\phi"]; // list of symbols which will always exist in language
 const MAX_STEPS = 100;
 
@@ -109,7 +108,7 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
             i_state.accept();
 
             // terminate on accept?
-            if(TERM_ON_ACCEPT) {
+            if(ProcessArgs.term_on_accept) {
                 i_state.terminate();
                 return;
             }
@@ -192,6 +191,12 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
             case "NFA": {
                 // iterate alive states over each token in respective current state
                 for(const state of alive_states) {
+                    // auto-terminate in null state
+                    if(state.current_state === "null" || state.current_state === "\\phi") {
+                        state.terminate();
+                        continue;
+                    }
+
                     // bug. if accept state has no transitions, it is never interpreted and therefore never accepted by the interpreter
                     let transition_keys = Object.keys(prog.states[state.current_state]);
                     if(transition_keys.length < 1) {
