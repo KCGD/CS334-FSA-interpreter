@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "fs";
 /**
  * Consts
  */
-const MODES = ["NFA", "DFA"];
+export const MODES = ["NFA", "DFA"];
 
 /**
  * Export snippets

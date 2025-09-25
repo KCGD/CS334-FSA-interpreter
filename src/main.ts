@@ -1,10 +1,16 @@
 import * as path from "path";
 
+/**
+ * TODO:
+ * DFA accepts all states?
+ * or non-accepting path reported as answer
+ */
+
 //debug lib imports
 import { green, greenBright, redBright } from "cli-color";
 import { isSea } from 'node:sea';
 import { Answer, interpret } from "./lib/interpreter/interpreter";
-import { parse, Program } from "./lib/parser/parser";
+import { MODES, parse, Program } from "./lib/parser/parser";
 import { failwith } from "./lib/util/common";
 import { Log } from './lib/util/debug';
 import { PrettyPrint } from "./lib/parser/printer";
@@ -253,6 +259,15 @@ async function Main(): Promise<void> {
 
         Log(`I`, `Printed dfa to: ${ProcessArgs.pretty_print}`);
         process.exit(0);
+    }
+
+    // apply force-mode argument to program
+    if(ProcessArgs.force_mode) {
+        if(!MODES.includes(ProcessArgs.force_mode)) {
+            failwith(`Cannot force to invalid mode: ${ProcessArgs.force_mode}. Must be one of: ${MODES.join(", ")}`);
+        }
+
+        program.mode = ProcessArgs.force_mode as Program["mode"];
     }
 
     let answers = new Array<Answer>;
