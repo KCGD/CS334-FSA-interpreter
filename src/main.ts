@@ -248,39 +248,34 @@ async function Main(): Promise<void> {
     if(answers.length < 1) {
         // not accepted
         console.log(redBright(`NOT ACCEPTED.`));
+        console.log(`Found no accepting paths.`);
     } else {
         console.log(greenBright(`ACCEPTED.`));
         console.log(`Found ${answers.length} accepting paths.`);
+
+        // print each accepted path
+        let termwidth = process.stdout.columns;
         for(const answer of answers) {
-            process.stdout.write(`| `);
+            let output = "";
+            let str = "";
+            output += '|';
+
+            // assemble the path and string
             for(const e of answer.path) {
-                process.stdout.write(`--> ${e.state} (${e.token} -> ${e.destination})`)
+                output += ` --> ${e.state} (${e.token} -> ${e.destination})`;
+                str += e.token;
             }
-            process.stdout.write('\n');
+
+            // print associated string
+            if((output.length + str.length) > termwidth) {
+                // print on seperate lines
+                console.log(output);
+                console.log(`:: ${str}`);
+            } else {
+                // print on same line
+                let spacerwidth = termwidth - output.length - str.length;
+                console.log(`${output}${' '.repeat(spacerwidth)}${str}`);
+            }
         }
     }
-
-
-    // if(!ProcessArgs.extquiet) {
-    //     if(program.accept.includes(answers.ending_state)) {
-    //         console.log(greenBright(`STRING ACCEPTED.`));
-    //         Log(`I`, `Halted in state: ${answers.ending_state} of accepted states [${program.accept.join(", ")}]`);
-    //     } else {
-    //         console.log(redBright(`STRING NOT ACCEPTED.`));
-
-    //         // special case null
-    //         if(answers.ending_state === "null") {
-    //             Log(`I`, `Halted in null state (crash).`);
-    //         } else {
-    //             Log(`I`, `Halted in state: ${answers.ending_state} NOT in accepted states [${program.accept.join(", ")}]`);
-    //         }
-    //     }
-    // } else {
-    //     // extra quiet, just print result.
-    //     if(program.accept.includes(answers.ending_state)) {
-    //         console.log(greenBright(`STRING ACCEPTED.`));
-    //     } else {
-    //         console.log(redBright(`STRING NOT ACCEPTED.`));
-    //     }
-    // }
 }
