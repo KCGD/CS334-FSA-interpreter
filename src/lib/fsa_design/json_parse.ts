@@ -138,7 +138,6 @@ export async function ConvertGraph(obj:any): Promise<Program> {
             } break;
 
             case "StartLink": {
-                console.log(link);
                 if(typeof link.node === "number") {
                     proto.start = state_name_by_index[String(link.node)]
                 }
