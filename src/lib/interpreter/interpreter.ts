@@ -54,12 +54,12 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
     let interpreter_states = new Array<InterpreterState>(new InterpreterState(prog.start));
     let interpreter_step = 0;
 
-    if(!string) {
+    if(!string && prog.mode === "DFA") {
         throw new Error(`No string supplied (add STDIN support!)`);
     }
 
     // split string to chars
-    let string_array = string.split('');
+    let string_array = (string)? string.split('') : [];
 
     // start log
     if(!ProcessArgs.quiet) {
