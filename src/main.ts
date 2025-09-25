@@ -10,6 +10,7 @@ import { Log } from './lib/util/debug';
 import { PrettyPrint } from "./lib/parser/printer";
 import { readFileSync } from "fs";
 import { ConvertGraph } from "./lib/fsa_design/json_parse";
+import { replace_math_chars } from "./lib/chars/char_replace";
 
 //rom import
 export let rom:any;
@@ -41,12 +42,14 @@ export type processArgs = {
     pretty_print: string | undefined;
     load_json: string | undefined;
     start_state: string | undefined;
+    term_on_accept: boolean;
+    force_mode: string | undefined;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
     "showHelpDoc":false,
     "printLicense":false,
-    "debug":true,
+    "debug":false,
     printVer: false,
     file: undefined,
     string: undefined,
@@ -56,6 +59,8 @@ export var ProcessArgs:processArgs = {
     pretty_print: undefined,
     load_json: undefined,
     start_state: undefined,
+    term_on_accept: false,
+    force_mode: undefined
 }
 
 //parse process arguments
@@ -66,6 +71,10 @@ for(let i = 0; i < process.argv.length; i++) {
         case "--help":
         case "-h": {
             ProcessArgs.showHelpDoc = true;
+        } break;
+
+        case "--debug": {
+            ProcessArgs.debug = true;
         } break;
 
         case "--license": {
@@ -127,6 +136,18 @@ for(let i = 0; i < process.argv.length; i++) {
                 failwith(`${arg} requires a start state value.`);
             }
             ProcessArgs.start_state = next;
+        } break;
+
+        case "--term-on-accept": 
+        case "-Toa": {
+            ProcessArgs.term_on_accept = true;
+        } break;
+
+        case "--force-mode": {
+            if(!next) {
+                failwith(`${arg} requires a value.`);
+            }
+            ProcessArgs.force_mode = next;
         } break;
 
         // build info
@@ -241,6 +262,9 @@ async function Main(): Promise<void> {
         });
     } catch (e) {
         console.log(``);
+        if(ProcessArgs.debug) {
+            console.error(e);
+        }
         failwith(`Interpreter error occured: ${e}`);
     }
 
@@ -265,6 +289,10 @@ async function Main(): Promise<void> {
                 output += ` --> ${e.state} (${e.token} -> ${e.destination})`;
                 str += e.token;
             }
+
+            // replace special math charschars
+            output = replace_math_chars(output);
+            str = replace_math_chars(str);
 
             // print associated string
             if((output.length + str.length) > termwidth) {
