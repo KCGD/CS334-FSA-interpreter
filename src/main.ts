@@ -1,7 +1,7 @@
 import * as path from "path";
 
 //debug lib imports
-import { greenBright, redBright } from "cli-color";
+import { green, greenBright, redBright } from "cli-color";
 import { isSea } from 'node:sea';
 import { Answer, interpret } from "./lib/interpreter/interpreter";
 import { parse, Program } from "./lib/parser/parser";
@@ -234,36 +234,53 @@ async function Main(): Promise<void> {
         process.exit(0);
     }
 
-    let answer = {} as Answer;
+    let answers = new Array<Answer>;
     try {
-        answer = await interpret(program, ProcessArgs.string, {
+        answers = await interpret(program, ProcessArgs.string, {
             "ignoreLangCheck": (!!ProcessArgs.load_json)    // ignore language validation when loading from json
         });
     } catch (e) {
+        console.log(``);
         failwith(`Interpreter error occured: ${e}`);
     }
 
     // program analysis
-    if(!ProcessArgs.extquiet) {
-        if(program.accept.includes(answer.ending_state)) {
-            console.log(greenBright(`STRING ACCEPTED.`));
-            Log(`I`, `Halted in state: ${answer.ending_state} of accepted states [${program.accept.join(", ")}]`);
-        } else {
-            console.log(redBright(`STRING NOT ACCEPTED.`));
-
-            // special case null
-            if(answer.ending_state === "null") {
-                Log(`I`, `Halted in null state (crash).`);
-            } else {
-                Log(`I`, `Halted in state: ${answer.ending_state} NOT in accepted states [${program.accept.join(", ")}]`);
-            }
-        }
+    if(answers.length < 1) {
+        // not accepted
+        console.log(redBright(`NOT ACCEPTED.`));
     } else {
-        // extra quiet, just print result.
-        if(program.accept.includes(answer.ending_state)) {
-            console.log(greenBright(`STRING ACCEPTED.`));
-        } else {
-            console.log(redBright(`STRING NOT ACCEPTED.`));
+        console.log(greenBright(`ACCEPTED.`));
+        console.log(`Found ${answers.length} accepting paths.`);
+        for(const answer of answers) {
+            process.stdout.write(`| `);
+            for(const e of answer.path) {
+                process.stdout.write(`--> ${e.state} (${e.token} -> ${e.destination})`)
+            }
+            process.stdout.write('\n');
         }
     }
+
+
+    // if(!ProcessArgs.extquiet) {
+    //     if(program.accept.includes(answers.ending_state)) {
+    //         console.log(greenBright(`STRING ACCEPTED.`));
+    //         Log(`I`, `Halted in state: ${answers.ending_state} of accepted states [${program.accept.join(", ")}]`);
+    //     } else {
+    //         console.log(redBright(`STRING NOT ACCEPTED.`));
+
+    //         // special case null
+    //         if(answers.ending_state === "null") {
+    //             Log(`I`, `Halted in null state (crash).`);
+    //         } else {
+    //             Log(`I`, `Halted in state: ${answers.ending_state} NOT in accepted states [${program.accept.join(", ")}]`);
+    //         }
+    //     }
+    // } else {
+    //     // extra quiet, just print result.
+    //     if(program.accept.includes(answers.ending_state)) {
+    //         console.log(greenBright(`STRING ACCEPTED.`));
+    //     } else {
+    //         console.log(redBright(`STRING NOT ACCEPTED.`));
+    //     }
+    // }
 }

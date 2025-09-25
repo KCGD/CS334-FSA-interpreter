@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "fs";
 
 /**
+ * Consts
+ */
+const MODES = ["NFA", "DFA"];
+
+/**
  * Export snippets
  */
 export const Parser_Tokens = {
@@ -37,6 +42,7 @@ export type Command = {command: string, args: Array<string>};
 
 export type Program = {
     lang: Array<string>;
+    mode: "NFA" | "DFA";
     accept: Array<string>;
     start: string;
     states: {[key:string]: State};
@@ -64,6 +70,7 @@ export async function parse(file:string): Promise<Program> {
         lang: [],
         accept: [],
         start: "",
+        mode: "DFA",
         states: {},
         vars: {},
         commands: {}
@@ -181,6 +188,11 @@ export async function parse(file:string): Promise<Program> {
                 if(semicolon_split.length === 2 && semicolon_split[1].length === 0) {
                     // is a state definition
                     state_name = semicolon_split[0].trim();
+
+                    // alloc state
+                    if(!proto.states[state_name]) {
+                        proto.states[state_name] = {};
+                    }
                     break;
                 }
 
@@ -365,6 +377,15 @@ export async function parse(file:string): Promise<Program> {
 
         // use accept state
         proto.accept = proto.vars.accept;
+    }
+
+    // define mode explicitly
+    if(typeof proto.vars["mode"] === "string") {
+        if(!MODES.includes(proto.vars["mode"])) {
+            throw new Error(`Invalid mode definition "${proto.vars.mode}". Must be one of: ${MODES.join(", ")}`);
+        }
+
+        proto.mode = proto.vars.mode as Program["mode"];
     }
 
     return proto;

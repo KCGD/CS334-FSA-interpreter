@@ -12,7 +12,7 @@ export type Graph = {
         parallelPart: number;
         perpendicularPart: number;
         text: string;
-        type: "Link" | "SelfLink";
+        type: "Link" | "SelfLink" | "StartLink";
     }>;
     nodes: Array<{
         "x": number;
@@ -44,7 +44,8 @@ export async function ConvertGraph(obj:any): Promise<Program> {
         "accept": new Array<string>(),
         "start": "null",
         "states": {},
-        "vars": {}
+        "vars": {},
+        "mode": "DFA",
     } as Program;
 
     /**
@@ -135,8 +136,19 @@ export async function ConvertGraph(obj:any): Promise<Program> {
                     proto.states[dst_state][key][dst_state] = 1;
                 }
             } break;
+
+            case "StartLink": {
+                console.log(link);
+                if(typeof link.node === "number") {
+                    proto.start = state_name_by_index[String(link.node)]
+                }
+            }
         }
     }
+
+    // move program mode, start to vars
+    proto.vars["mode"] = proto.mode;
+    proto.vars["start"] = proto.start;
 
     return proto;
 }
