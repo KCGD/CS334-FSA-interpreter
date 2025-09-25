@@ -104,7 +104,6 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
 
         // check for accept state
         if(prog.accept.includes(i_state.current_state)) {
-            console.log(`accept`, JSON.stringify(i_state, null, 4));
             i_state.accept();
 
             // terminate on accept?
