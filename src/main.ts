@@ -242,6 +242,16 @@ async function Main(): Promise<void> {
         }
     }
 
+    // apply force-mode argument to program
+    if(ProcessArgs.force_mode) {
+        if(!MODES.includes(ProcessArgs.force_mode)) {
+            failwith(`Cannot force to invalid mode: ${ProcessArgs.force_mode}. Must be one of: ${MODES.join(", ")}`);
+        }
+
+        program.mode = ProcessArgs.force_mode as Program["mode"];
+        program.vars["mode"] = program.mode;
+    }
+
     // dump ast
     if(ProcessArgs.dumpAst) {
         Log(`I`, `----- [AST] -----`);
@@ -259,15 +269,6 @@ async function Main(): Promise<void> {
 
         Log(`I`, `Printed dfa to: ${ProcessArgs.pretty_print}`);
         process.exit(0);
-    }
-
-    // apply force-mode argument to program
-    if(ProcessArgs.force_mode) {
-        if(!MODES.includes(ProcessArgs.force_mode)) {
-            failwith(`Cannot force to invalid mode: ${ProcessArgs.force_mode}. Must be one of: ${MODES.join(", ")}`);
-        }
-
-        program.mode = ProcessArgs.force_mode as Program["mode"];
     }
 
     let answers = new Array<Answer>;
