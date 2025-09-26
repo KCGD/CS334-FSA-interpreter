@@ -51,6 +51,7 @@ export type processArgs = {
     term_on_accept: boolean;
     force_mode: string | undefined;
     max_steps: number;
+    auto_insert_nullstate: boolean;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
@@ -69,6 +70,7 @@ export var ProcessArgs:processArgs = {
     term_on_accept: false,
     force_mode: undefined,
     max_steps: 100,
+    auto_insert_nullstate: false,
 }
 
 //parse process arguments
@@ -164,6 +166,11 @@ for(let i = 0; i < process.argv.length; i++) {
             if(Number.isNaN(ProcessArgs.max_steps) || ProcessArgs.max_steps < 1) {
                 failwith(`${arg}: Invalid value ${next}, expects positive, non-zero integer.`);
             }
+        } break;
+
+        case "--auto-insert-nulls":
+        case "-Ain": {
+            ProcessArgs.auto_insert_nullstate = true;
         } break;
 
         // build info

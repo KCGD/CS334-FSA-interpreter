@@ -120,7 +120,11 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
         if(!destination) {
             switch(prog.mode) {
                 case "DFA": {
-                    throw new Error(`Interpreter error: No transform defined for token ${token} in state ${i_state.current_state}.`);
+                    if(ProcessArgs.auto_insert_nullstate) {
+                        destination = "null";
+                    } else {
+                        throw new Error(`Interpreter error: No transform defined for token ${token} in state ${i_state.current_state}. Pass --auto-insert-nulls to infer null states.`);
+                    }
                 } break;
 
                 case "NFA": {
@@ -176,7 +180,13 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
                 // break the loop if in DFA mode and string is empty
                 if(string_array.length < 1) {
                     explicit_break = true;
-                    break;
+
+                    // check if terminating in an accepting state
+                    if(prog.accept.includes(interpreter_states[0].current_state)) {
+                        interpreter_states[0].accept();
+                    }
+
+                    continue;
                 }
 
                 // shift string and run step
