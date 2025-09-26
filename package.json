@@ -1,6 +1,6 @@
 {
-  "name": "fsa",
-  "version": "0.0.0-0",
+  "name": "ndfa",
+  "version": "0.0.0-2",
   "description": "package description",
   "packageOpts": {
     "section": "base",
@@ -27,6 +27,7 @@
     "@types/cli-color": "^2.0.2",
     "@types/dotenv": "^8.2.3",
     "@types/node": "^20.12.7",
+    "@types/prompt-sync": "^4.2.3",
     "backpack-cli": "git+https://github.com/KCGD/backpack-cli.git",
     "cli-color": "^2.0.3",
     "esbuild": "^0.25.8",
@@ -38,6 +39,7 @@
   },
   "dependencies": {
     "constants": "^0.0.2",
-    "dotenv": "^17.2.1"
+    "dotenv": "^17.2.1",
+    "prompt-sync": "^4.2.0"
   }
 }

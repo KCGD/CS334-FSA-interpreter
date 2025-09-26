@@ -1,19 +1,58 @@
-import { createReadStream, existsSync, readFileSync } from "fs";
-import { createInterface } from "readline";
+import { existsSync, readFileSync } from "fs";
 
-// index is token, value is state name
-type State = {[key:string]: string};
+/**
+ * Consts
+ */
+export const MODES = ["NFA", "DFA"];
+
+/**
+ * Export snippets
+ */
+export const Parser_Tokens = {
+    DEFINE_ARRAY: (key:string, content:Array<string>) => {return `${key} = [${content.join(', ')}]`},
+    DEFINE_VALUE: (key:string, value:string) => {return `${key} = ${value}`},
+    DEFINE_STATE: (key:string) => {return `${key}:`},
+    DEFINE_COMMAND: (command:Command) => {return `${command.command} (${command.args.join(", ")})`},
+    DEFINE_TRANSFORM: (transform:Transform_Proto) => {
+        let transform_keys = Object.keys(transform.transforms);
+
+        // single state transform
+        if(transform_keys.length < 2) {
+            return `${transform.key}\t${transform_keys[0]}`;
+        } else {
+            // multi state transform (non-deterministic)
+            let dest_states = [];
+            for(const t of transform_keys) {
+                dest_states.push((transform.transforms[t] === 1)
+                    ? t                                 // unweighted transform
+                    : `${transform.transforms[t]}-${t}` // weighted transform
+                );
+            }
+
+            // return transform in array syntax
+            return `${transform.key}\t[${dest_states.join(", ")}]`;
+        }
+    }
+}
+
+// index is token, value is state subset -> key is state name, number is probability
+export type State = {[key:string]: {[key:string]: number}};
+export type Transform_Proto = {key:string, transforms: {[key:string]: number}}
+export type Command = {command: string, args: Array<string>};
 
 export type Program = {
     lang: Array<string>;
+    mode: "NFA" | "DFA";
     accept: Array<string>;
     start: string;
     states: {[key:string]: State};
-    vars: {[ley:string]: any};
+    vars: {[key:string]: string | Array<string>};
+    commands?: {[key:string]: Array<Command>}
 }
 
 const REG = {
-    between_brackets: /(?<=\[)(.*?)(?=\])/
+    between_brackets: /(?<=\[)(.*?)(?=\])/,
+    between_parenthesis: /(?<=\()(.*?)(?=\))/
 }
 
 export type ParserState = "General" | "State";
@@ -31,8 +70,10 @@ export async function parse(file:string): Promise<Program> {
         lang: [],
         accept: [],
         start: "",
+        mode: "DFA",
         states: {},
         vars: {},
+        commands: {}
     };
 
     let state:ParserState = "General";
@@ -49,6 +90,11 @@ export async function parse(file:string): Promise<Program> {
         // do not parse comments
         if(line?.trim().startsWith('#')) {
             return;
+        }
+
+        // remove in-line comments
+        if(line?.includes('#')) {
+            line = line.split('#')[0].trim();
         }
 
         switch(state) {
@@ -115,19 +161,50 @@ export async function parse(file:string): Promise<Program> {
                 // break - assignment vs definition
                 let semicolon_split = line.split(':');
                 let equals_split = line.split('=');
+                let is_command = line.startsWith('$');
+                let parenthesis_split = line.split('(');
+
+                // command
+                if(parenthesis_split.length === 2 && is_command) {
+                    let params_str = `(${parenthesis_split[1]}`;
+                    let reg_res = REG.between_parenthesis.exec(params_str);
+                    let select = reg_res ? reg_res[0] : null;
+
+                    let args = select? select.split(',').map((item) => {return item.trim()}) : [];
+
+                    if(!proto.commands) {
+                        proto.commands = {};
+                    }
+
+                    if(!proto.commands[state_name]) {
+                        proto.commands[state_name] = new Array<Command>();
+                    }
+
+                    proto.commands[state_name].push({command: parenthesis_split[0].trim(), args: args});
+                    break;
+                }
 
                 // state definition - switch to new state
                 if(semicolon_split.length === 2 && semicolon_split[1].length === 0) {
                     // is a state definition
                     state_name = semicolon_split[0].trim();
+
+                    // alloc state
+                    if(!proto.states[state_name]) {
+                        proto.states[state_name] = {};
+                    }
                     break;
                 }
 
                 // transform function definition - token -> state
                 // proto states [state name]["token"] = state
-                let tab_split = line.split('\t');
+                // 
+                let tab_split = (line.includes('\t'))
+                    ? line.split('\t')
+                    : line.split("  ");
+
                 if(tab_split.length === 2 && tab_split[1].length > 0) {
-                    let token = tab_split[0].trim();
+                    let tokens = tab_split[0].trim().split(',').map((s) => {return s.trim()});
                     let destination_state = tab_split[1].trim();
 
                     // allocate new state if it isnt already defined
@@ -136,11 +213,76 @@ export async function parse(file:string): Promise<Program> {
                     }
 
                     // check if token already defined in state
-                    if(proto.states[state_name][token]) {
-                        throw new Error(parse_error(line, line_num, `Token '${token}' collides with previously defined token.`));
-                    }
+                    // for each token
+                    for(const token of tokens) {
+                        if(proto.states[state_name][token]) {
+                            throw new Error(parse_error(line, line_num, `Token '${token}' collides with previously defined token.`));
+                        };
 
-                    proto.states[state_name][token] = destination_state;
+                        // check if state is single state or state subset (array checker)
+                        if(destination_state.startsWith('[')) {
+                            // array
+                            let reg_result = REG.between_brackets.exec(destination_state);
+                            let select = reg_result ? reg_result[0] : null;
+                            if(!select) {
+                                // parser error, bad array value
+                                throw new Error(parse_error(line, line_num, `Invalid array syntax.`));
+                            }
+
+                            // assign array value
+                            let array_val = select.split(',').map((item) => {return item.trim()});
+                            if(array_val.length < 1) {
+                                throw new Error(parse_error(line, line_num, `Array value cannot be empty.`));
+                            }
+
+                            // check if probability given (sep by '-')
+                            // if none, probability is 1
+                            for(const i in array_val) {
+                                let value = array_val[i];
+                                let dashsplit = value.trim().split('-');
+
+                                // check if probability supplied
+                                if(dashsplit.length === 2) {
+                                    let probability = parseFloat(dashsplit[0].trim());
+                                    let destination = dashsplit[1].trim();
+
+                                    // make sure probability is valid number
+                                    if(Number.isNaN(probability)) {
+                                        throw new Error(parse_error(line, line_num, `Invalid probability (expected float): ${dashsplit[0].trim()}`));
+                                    }
+
+                                    // make sure state is valid string
+                                    if(destination.length < 1) {
+                                        throw new Error(parse_error(line, line_num, `Destination state must not be empty.`));
+                                    }
+
+                                    // good definition
+                                    if(typeof proto.states[state_name][token] === "undefined") {
+                                        proto.states[state_name][token] = {};
+                                    }
+                                    proto.states[state_name][token][destination] = probability;
+
+                                // single probability inside an array
+                                } else if (!array_val[i].includes('-')) {
+                                    if(typeof proto.states[state_name][token] === "undefined") {
+                                        proto.states[state_name][token] = {};
+                                    }
+                                    proto.states[state_name][token][array_val[i]] = 1;
+
+                                // syntax error
+                                } else {
+                                    // syntax error
+                                    throw new Error(parse_error(line, line_num, `Syntax error in state definition array (position ${i}).`));
+                                }
+                            }                        
+                        } else {
+                            // single state definition
+                            if(typeof proto.states[state_name][token] === "undefined") {
+                                proto.states[state_name][token] = {};
+                            }
+                            proto.states[state_name][token][destination_state] = 1;
+                        }
+                    }
                 } else if (tab_split.length === 2 && tab_split[1].length < 1) {
                     // transform function with no state definition
                     throw new Error(parse_error(line, line_num, `Transform function missing state definition.`));
@@ -167,7 +309,10 @@ export async function parse(file:string): Promise<Program> {
 
         for(const token of state_tokens) {
             lang_set.add(token);
-            state_set.add(proto.states[state_name][token]);
+
+            for(const state of Object.keys(proto.states[state_name][token])) {
+                state_set.add(state);
+            }
         }
     }
 
@@ -192,7 +337,7 @@ export async function parse(file:string): Promise<Program> {
     // check for transform functions which point to undefined states
     let known_states = Object.keys(proto.states);
     for(const state of [...state_set]) {
-        if(!known_states.includes(state)) {
+        if(!known_states.includes(state) && state !== "null") {
             throw new Error(`Illegal reference to undefined state ${state}.`);
         }
     }
@@ -201,10 +346,17 @@ export async function parse(file:string): Promise<Program> {
     if(!proto.vars["start"]) {
         throw new Error(`Missing starting state definition.`);
     } else {
+        if(Array.isArray(proto.vars["start"])) {
+            throw new Error(`Illegal type for start definition, expected string, recieved array.`);
+        }
         proto.start = proto.vars["start"];
     }
 
     // make sure starting state exists
+    // make sure starting state isnt null
+    if(proto.start === "null") {
+        throw new Error(`Starting state cannot be a null state.`);
+    }
     if(!known_states.includes(proto.start)) {
         throw new Error(`Undefined reference to ${proto.start} as starting state.`);
     }
@@ -218,6 +370,9 @@ export async function parse(file:string): Promise<Program> {
         }
 
         for(const state of proto.vars["accept"] as Array<string>) {
+            if(state === "null") {
+                throw new Error(`Accept states cannot include a null state.`);
+            }
             if(!known_states.includes(state)) {
                 throw new Error(`Undefined reference to state ${state} in accepted states.`);
             }
@@ -225,6 +380,15 @@ export async function parse(file:string): Promise<Program> {
 
         // use accept state
         proto.accept = proto.vars.accept;
+    }
+
+    // define mode explicitly
+    if(typeof proto.vars["mode"] === "string") {
+        if(!MODES.includes(proto.vars["mode"])) {
+            throw new Error(`Invalid mode definition "${proto.vars.mode}". Must be one of: ${MODES.join(", ")}`);
+        }
+
+        proto.mode = proto.vars.mode as Program["mode"];
     }
 
     return proto;

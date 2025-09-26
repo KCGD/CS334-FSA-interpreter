@@ -1,4 +1,31 @@
-output (v0.0.0-0)
+ndfa (0.0.0-2)
 
-This is an example help file.
-Please put any useful usage information about the program in this file.
+A (non)-definate finite state automaton interpreter language.
+
+Usage: ndfa <automaton.nfa> <?args>
+
+Args:
+    --help (-h)                     - Prints this help document.
+    --license                       - Prints the software license.
+    --debug                         - Enabled debug messages.
+    --version                       - Prints the software version.
+    -i <file>                       - Specify input file.
+    --string (-S) <string>          - Specify string to interpret (DFA).
+    --dump-ast                      - Dumps the abstract syntax tree of the
+                                    parsed program.
+    --quiet (-q)                    - Supress less-important messages.
+    --Quiet (-qq)                   - Supress all non-critical messages.
+    --pretty-print (-pp) <file>     - Pretty-print the specified program to
+                                    a file.
+    --load-json (-J) <file>         - Loads a JSON representation of an automata.
+                                    Expects format from: https://madebyevan.com/fsm/.
+    --start <state>                 - Specify a starting state by name.
+    --term-on-accept (-Toa)         - Terminate the program when any accepting
+                                    state reached.
+    --force-mode <NFA|DFA>          - Override the specified mode in the given
+                                    program.
+    --max-steps (-Max) <int>        - Specify the maximum allowed steps for the
+                                    program. (Default 100).
+    --auto-insert-nulls (-Ain)      - Auto insert nullstate transitions when
+                                    transform not specified (DFA only).
+    --build-info                    - Prints build information.
