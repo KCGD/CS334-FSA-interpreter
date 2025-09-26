@@ -4,7 +4,6 @@ import { Program } from "../parser/parser";
 
 const prompt = PromptSync();
 const CONSTANT_SYMBOLS = ["null", "\\phi"]; // list of symbols which will always exist in language
-const MAX_STEPS = 100;
 
 type Event = {
     state: string;
@@ -73,7 +72,7 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
      */
     async function _step(token:string, i_state: InterpreterState) {
         // bail if current step is above the maximum allowed steps
-        if(interpreter_step > MAX_STEPS) {
+        if(interpreter_step > ProcessArgs.max_steps) {
             throw new Error(`Max step limit reached. Bailing.`);
         } else {
             interpreter_step++;

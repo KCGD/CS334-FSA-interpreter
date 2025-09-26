@@ -50,6 +50,7 @@ export type processArgs = {
     start_state: string | undefined;
     term_on_accept: boolean;
     force_mode: string | undefined;
+    max_steps: number;
 }
 //define object for process arguments
 export var ProcessArgs:processArgs = {
@@ -66,7 +67,8 @@ export var ProcessArgs:processArgs = {
     load_json: undefined,
     start_state: undefined,
     term_on_accept: false,
-    force_mode: undefined
+    force_mode: undefined,
+    max_steps: 100,
 }
 
 //parse process arguments
@@ -154,6 +156,14 @@ for(let i = 0; i < process.argv.length; i++) {
                 failwith(`${arg} requires a value.`);
             }
             ProcessArgs.force_mode = next;
+        } break;
+
+        case "--max-steps":
+        case "-Max": {
+            ProcessArgs.max_steps = parseInt(next);
+            if(Number.isNaN(ProcessArgs.max_steps) || ProcessArgs.max_steps < 1) {
+                failwith(`${arg}: Invalid value ${next}, expects positive, non-zero integer.`);
+            }
         } break;
 
         // build info
