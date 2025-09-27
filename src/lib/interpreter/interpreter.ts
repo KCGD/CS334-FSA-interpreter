@@ -1,6 +1,7 @@
 import PromptSync from "prompt-sync";
 import { ProcessArgs } from "../../main";
 import { Program } from "../parser/parser";
+import { replace_math_chars } from "../chars/char_replace";
 
 const prompt = PromptSync();
 const CONSTANT_SYMBOLS = ["null", "\\phi"]; // list of symbols which will always exist in language
@@ -143,7 +144,7 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
 
         // print step
         if(!ProcessArgs.quiet) {
-            process.stdout.write(`\n> ${event.state} (${event.token} -> ${event.destination})`);
+            process.stdout.write(replace_math_chars(`\n> ${event.state} (${event.token} -> ${event.destination})`));
         }
 
         // transition to next state (split)
