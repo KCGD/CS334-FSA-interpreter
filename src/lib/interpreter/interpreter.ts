@@ -4,7 +4,8 @@ import { Program } from "../parser/parser";
 import { replace_math_chars } from "../chars/char_replace";
 
 const prompt = PromptSync();
-const CONSTANT_SYMBOLS = ["null", "\\phi"]; // list of symbols which will always exist in language
+const CONSTANT_SYMBOLS = ["null", "\\phi", "\\emptystate", "emptystate"]; // list of symbols which will always exist in language
+const NULLSTATE_SYMBOLS = ["null", "\\phi", "\\emptystate", "emptystate"];
 
 type Event = {
     state: string;
@@ -97,7 +98,7 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
 
         // check the current state
         // check for null state - termiante
-        if(i_state.current_state === "null") {
+        if(NULLSTATE_SYMBOLS.includes(i_state.current_state)) {
             i_state.terminate();
             return;
         }
@@ -201,7 +202,7 @@ export async function interpret(prog:Program, string?:string, opts?:InterpreterO
                 // iterate alive states over each token in respective current state
                 for(const state of alive_states) {
                     // auto-terminate in null state
-                    if(state.current_state === "null" || state.current_state === "\\phi") {
+                    if(NULLSTATE_SYMBOLS.includes(state.current_state)) {
                         state.terminate();
                         continue;
                     }
