@@ -1,6 +1,6 @@
 {
   "name": "ndfa",
-  "version": "0.0.0-2",
+  "version": "0.0.0-3",
   "description": "package description",
   "packageOpts": {
     "section": "base",

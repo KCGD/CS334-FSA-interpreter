@@ -1,4 +1,4 @@
-ndfa (0.0.0-2)
+ndfa (0.0.0-3)
 
 A (non)-definate finite state automaton interpreter language.
 
